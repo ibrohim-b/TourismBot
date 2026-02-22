@@ -85,7 +85,6 @@ admin = Admin(
     authentication_backend=authentication_backend,
     title="Tourism Guide Admin",
     base_url="/admin/",
-    templates_dir=os.path.join(os.path.dirname(__file__), "templates") if os.path.exists(os.path.join(os.path.dirname(__file__), "templates")) else None,
 )
 
 admin.add_view(CityAdmin)
