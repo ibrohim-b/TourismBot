@@ -34,13 +34,7 @@ app = FastAPI(
     title="Tourism Guide Admin Panel",
     description="Admin interface for managing cities, excursions, and points of interest",
     version="1.0.0",
-    root_path="",
 )
-
-# Mount sqladmin static files
-SQLADMIN_STATICS = Path(sqladmin.__file__).parent / "statics"
-if SQLADMIN_STATICS.exists():
-    app.mount("/admin/statics", StaticFiles(directory=str(SQLADMIN_STATICS)), name="admin_statics")
 
 # Serve media files statically
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
@@ -93,6 +87,11 @@ admin = Admin(
     title="Tourism Guide Admin",
     base_url="/admin",
 )
+
+# Mount sqladmin static files AFTER Admin is created
+SQLADMIN_STATICS = Path(sqladmin.__file__).parent / "statics"
+if SQLADMIN_STATICS.exists():
+    app.mount("/admin/statics", StaticFiles(directory=str(SQLADMIN_STATICS)), name="admin_statics")
 
 admin.add_view(CityAdmin)
 admin.add_view(ExcursionAdmin)
