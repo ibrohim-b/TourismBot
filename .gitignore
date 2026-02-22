@@ -1,9 +1,19 @@
 .venv
 .env
 logs/
+*.log
+*.pid
 
 web/__pycache__/
 bot/__pycache__/
 db/__pycache__/
 utils/__pycache__/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 .DS_Store
+db.sqlite3
+*.db
+*.sqlite
