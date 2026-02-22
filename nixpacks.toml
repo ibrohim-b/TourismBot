@@ -2,10 +2,10 @@
 nixPkgs = ["python311"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["pip3 install -r requirements.txt"]
 
 [phases.build]
 cmds = ["mkdir -p media/images media/audio media/videos media/documents logs"]
 
 [start]
-cmd = "python web/run_admin.py"
+cmd = "python3 web/run_admin.py"
