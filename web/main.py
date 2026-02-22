@@ -6,6 +6,7 @@ from sqladmin import Admin
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 from markupsafe import Markup
+import sqladmin
 
 from db.base import Base
 from db.session import async_engine, sync_engine, SyncSessionLocal
@@ -35,6 +36,11 @@ app = FastAPI(
     version="1.0.0",
     root_path="",
 )
+
+# Mount sqladmin static files
+SQLADMIN_STATICS = Path(sqladmin.__file__).parent / "statics"
+if SQLADMIN_STATICS.exists():
+    app.mount("/admin/statics", StaticFiles(directory=str(SQLADMIN_STATICS)), name="admin_statics")
 
 # Serve media files statically
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
