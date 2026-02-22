@@ -33,6 +33,7 @@ app = FastAPI(
     title="Tourism Guide Admin Panel",
     description="Admin interface for managing cities, excursions, and points of interest",
     version="1.0.0",
+    root_path="",
 )
 
 # Serve media files statically
@@ -84,7 +85,7 @@ admin = Admin(
     session_maker=SyncSessionLocal,
     authentication_backend=authentication_backend,
     title="Tourism Guide Admin",
-    base_url="/admin/",
+    base_url="/admin",
 )
 
 admin.add_view(CityAdmin)
