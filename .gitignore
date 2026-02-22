@@ -1,0 +1,9 @@
+.venv
+.env
+logs/
+
+web/__pycache__/
+bot/__pycache__/
+db/__pycache__/
+utils/__pycache__/
+.DS_Store
