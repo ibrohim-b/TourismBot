@@ -16,8 +16,9 @@ from web.media_admin import MediaField, MediaWidget, MEDIA_CSS, MEDIA_JS
 from markupsafe import Markup
 from starlette.requests import Request
 from utils.logger import setup_logger
+from markupsafe import Markup
 
-logger = setup_logger('web_admin')
+logger = setup_logger("web_admin")
 
 class CityAdmin(ModelView, model=City):
     column_list = [City.id, City.name, City.image, City.excursions]
@@ -25,15 +26,26 @@ class CityAdmin(ModelView, model=City):
     column_sortable_list = [City.id, City.name]
     form_columns = [City.name, City.image]
 
+    column_formatters = {
+        City.name: lambda m, a: (
+            ((m.name[:30] + "...") if len(m.name) > 30 else m.name).upper()
+        ),
+        City.image: lambda m, a: (
+            Markup(
+                f'<a href="\{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
+            )
+            if m.image
+            else "-"
+        ),
+    }
+    
+
     name = "City"
     name_plural = "Cities"
     icon = "fa-solid fa-city"
 
     # Display settings
     page_size = 20
-    column_formatters = {
-        City.name: lambda m, a: m.name.upper(),
-    }
 
     # Actions
     action_disallowed_list = []
@@ -81,10 +93,6 @@ class CityAdmin(ModelView, model=City):
         form_class.image.kwargs["entity_type"] = "city"
         return form_class
 
-
-
-
-
     async def insert_model(self, request: Request, data: dict):
         logger.info(f"[CityAdmin] Inserting city: {data}")
         return await super().insert_model(request, data)
@@ -100,9 +108,34 @@ class ExcursionAdmin(ModelView, model=Excursion):
         Excursion.city_id,
         Excursion.city,
         Excursion.image,
+        Excursion.video,
     ]
     column_searchable_list = [Excursion.title, Excursion.description]
     column_sortable_list = [Excursion.id, Excursion.title, Excursion.city_id]
+
+    column_formatters = {
+        Excursion.title: lambda m, a: (
+            (m.title[:30] + "...") if len(m.title) > 30 else m.title
+        ),
+        Excursion.description: lambda m, a: (
+            (m.description[:50] + "...") if len(m.description) > 50 else m.description
+        ),
+         Excursion.image: lambda m, a: (
+            Markup(
+                f'<a href="\{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
+            )
+            if m.image
+            else "-"
+        ),
+        Excursion.video: lambda m, a: (
+            Markup(
+                f'<a href="\{m.video}" target="_blank" class="btn btn-sm btn-danger">🎬 Watch</a>'
+            )
+            if m.video
+            else "-"
+        ),
+    }
+
     form_columns = [
         Excursion.city,
         Excursion.title,
@@ -212,6 +245,35 @@ class PointAdmin(ModelView, model=Point):
     column_sortable_list = [Point.id, Point.order, Point.title, Point.excursion_id]
     column_default_sort = [(Point.excursion_id, False), (Point.order, False)]
 
+    column_formatters = {
+        Point.title: lambda m, a: (
+            (m.title[:30] + "...") if len(m.title) > 30 else m.title
+        ),
+        Point.text: lambda m, a: (m.text[:50] + "...") if len(m.text) > 50 else m.text,
+        Point.image: lambda m, a: (
+            Markup(
+                f'<a href="\{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
+            )
+            if m.image
+            else "-"
+        ),
+        Point.audio: lambda m, a: (
+            Markup(
+                f'<a href="\{m.audio}" target="_blank" class="btn btn-sm btn-success">🎧 Play</a>'
+            )
+            if m.audio
+            else "-"
+        ),
+        Point.video: lambda m, a: (
+            Markup(
+                f'<a href="\{m.video}" target="_blank" class="btn btn-sm btn-danger">🎬 Watch</a>'
+            )
+            if m.video
+            else "-"
+        ),
+    }
+
+
     form_columns = [
         Point.excursion,
         Point.order,
@@ -315,7 +377,7 @@ class PointAdmin(ModelView, model=Point):
             "data-entity-type": "point",
         },
     }
-    
+
     @property
     def form_overrides(self):
         return {
