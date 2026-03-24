@@ -3,6 +3,7 @@ from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardBut
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
+from aiogram.utils.media_group import MediaGroupBuilder
 from sqlalchemy import select
 
 from db.session import AsyncSessionLocal
@@ -163,13 +164,18 @@ async def at_place(call: CallbackQuery, state: FSMContext):
 
     point = points[idx]
 
+    media_group = MediaGroupBuilder()
+    
     if point.image:
-        await call.message.answer_photo(FSInputFile(point.image))
+        media_group.add_photo(media=FSInputFile(point.image))
+    if point.video:
+        media_group.add_video(media=FSInputFile(point.video))
+    await call.message.answer_media_group(media_group.build())
+    
     if point.audio:
         await call.message.answer_audio(FSInputFile(point.audio))
-
+        
     await call.message.answer(point.text, reply_markup=next_kb())
-
 
 @router.callback_query(F.data == "next")
 async def next_point(call: CallbackQuery, state: FSMContext):
