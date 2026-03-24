@@ -1,3 +1,4 @@
+import importlib.resources
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
@@ -89,9 +90,10 @@ admin = Admin(
 )
 
 # Mount sqladmin static files AFTER Admin is created
-SQLADMIN_STATICS = Path(sqladmin.__file__).parent / "statics"
-if SQLADMIN_STATICS.exists():
-    app.mount("/admin/statics", StaticFiles(directory=str(SQLADMIN_STATICS)), name="admin_statics")
+with importlib.resources.path("sqladmin", "statics") as p:
+    SQLADMIN_STATICS = p
+    if SQLADMIN_STATICS.exists():
+        app.mount("/admin/statics", StaticFiles(directory=str(SQLADMIN_STATICS)), name="admin_statics")
 
 admin.add_view(CityAdmin)
 admin.add_view(ExcursionAdmin)

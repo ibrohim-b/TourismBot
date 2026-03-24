@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
@@ -8,7 +8,7 @@ from sqlalchemy import select
 from db.session import AsyncSessionLocal
 from db.models import City, Excursion, Point
 from bot.states import TripState
-from bot.keyboards import *
+from bot.keyboards import simple_kb, start_excursion_kb, im_here_kb, next_kb, home_kb
 from utils.logger import setup_logger
 
 logger = setup_logger('bot_handlers')
@@ -29,6 +29,8 @@ async def start(msg: Message):
 
 @router.callback_query(F.data == "home")
 async def go_home(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
     await state.clear()
     await call.message.answer(
         "👋 Привет! Это телеграм бот: <b>ГИД В КАРМАНЕ</b>\n\n"
@@ -76,11 +78,19 @@ async def get_trips(msg: Message, state: FSMContext):
 async def choose_city(call: CallbackQuery, state: FSMContext):
     city_id = int(call.data.split(":")[1])
     logger.info(f"User {call.from_user.id} selected city {city_id}")
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
     await state.update_data(city_id=city_id)
-
+    
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Excursion).where(Excursion.city_id == city_id))
         excursions = result.scalars().all()
+        city = await session.execute(select(City).where(City.id == city_id))
+        city = city.scalars().first()
+        if city.image:
+            await call.message.answer_photo(FSInputFile(city.image))
+    
+    await call.message.answer(f"✅ Выбрано: *{city.name}*", parse_mode="Markdown")
 
     kb = simple_kb(
         [[InlineKeyboardButton(text=e.title, callback_data=f"exc:{e.id}")]for e in excursions]
@@ -92,12 +102,16 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
 async def excursion_info(call: CallbackQuery, state: FSMContext):
     exc_id = int(call.data.split(":")[1])
     logger.info(f"User {call.from_user.id} selected excursion {exc_id}")
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
     await state.update_data(excursion_id=exc_id, point_index=0)
 
     async with AsyncSessionLocal() as session:
         exc = await session.get(Excursion, exc_id)
         result = await session.execute(select(Point).where(Point.excursion_id == exc_id))
         points = result.scalars().all()
+        
+    await call.message.answer(f"✅ Выбрано: *{exc.title}*", parse_mode="Markdown")
 
     await call.message.answer(
         f"*{exc.title}*\n\n{exc.description}\n\n📍 Точек: {len(points)}",
@@ -110,6 +124,8 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
 async def start_trip(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     logger.info(f"User {call.from_user.id} started excursion {data['excursion_id']}")
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
     await send_point(call, data["excursion_id"], 0)
 
 
@@ -135,7 +151,8 @@ async def send_point(call, exc_id, index):
 async def at_place(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     idx = data["point_index"]
-
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Point)
@@ -158,6 +175,9 @@ async def at_place(call: CallbackQuery, state: FSMContext):
 async def next_point(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     idx = data["point_index"] + 1
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
+
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
