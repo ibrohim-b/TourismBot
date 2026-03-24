@@ -53,7 +53,7 @@ async def get_trips(msg: Message, state: FSMContext):
     try:
         logger.info(f"User {msg.from_user.id} requested trips")
         async with AsyncSessionLocal() as session:
-            result = await session.execute(select(City))
+            result = await session.execute(select(City).where(City.excursions.any()))
             cities = result.scalars().all()
         
         logger.info(f"Found {len(cities)} cities")
@@ -83,7 +83,7 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
     await state.update_data(city_id=city_id)
     
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Excursion).where(Excursion.city_id == city_id))
+        result = await session.execute(select(Excursion).where(Excursion.city_id == city_id).where(Excursion.points.any()))
         excursions = result.scalars().all()
         city = await session.execute(select(City).where(City.id == city_id))
         city = city.scalars().first()
