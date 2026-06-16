@@ -140,7 +140,8 @@ async def send_point(call, exc_id, index):
         points = result.scalars().all()
         point = points[index]
 
-    await call.message.answer_location(point.lat, point.lng)
+    if point.lat and point.lng:
+        await call.message.answer_location(point.lat, point.lng)
     await call.message.answer(
         f"📍 *{point.title}*\n\nНажмите кнопку, когда будете на месте.",
         reply_markup=im_here_kb(),
@@ -170,7 +171,8 @@ async def at_place(call: CallbackQuery, state: FSMContext):
         media_group.add_photo(media=FSInputFile(point.image))
     if point.video:
         media_group.add_video(media=FSInputFile(point.video))
-    await call.message.answer_media_group(media_group.build())
+    if point.image or point.video:
+        await call.message.answer_media_group(media_group.build())
     
     if point.audio:
         await call.message.answer_audio(FSInputFile(point.audio))

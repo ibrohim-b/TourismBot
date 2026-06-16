@@ -40,11 +40,11 @@ class Point(Base):
     title = Column(String)
     text = Column(Text)
 
-    lat = Column(Float)
-    lng = Column(Float)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
 
     audio = Column(String)   # path: media/audio/xxx.mp3
-    image = Column(String)   # path: media/images/xxx.jpg
+    image = Column(String, nullable=True)   # path: media/images/xxx.jpg
     video = Column(String, nullable=True)  # path: media/videos/xxx.mp4
 
     excursion = relationship("Excursion", back_populates="points")
