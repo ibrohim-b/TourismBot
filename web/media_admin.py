@@ -37,6 +37,9 @@ class MediaWidget(TextInput):
                 {get_media_preview(field_value, media_type) if field_value else ''}
             </div>
             <div class="media-path" id="path_{field_id}">{field_value or 'No file selected'}</div>
+            <button type="button" class="media-delete-btn" id="delbtn_{field_id}"
+                onclick="clearMediaField('{field_id}')"
+                {'style="display:none"' if not field_value else ''}>&#128465; Remove</button>
         </div>
         '''
 
@@ -206,6 +209,21 @@ MEDIA_CSS = '''
     border: 1px solid #f5c6cb;
 }
 
+.media-delete-btn {
+    margin-top: 8px;
+    padding: 6px 14px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.media-delete-btn:hover {
+    background: #a71d2a;
+}
+
 .media-upload-status {
     padding: 10px 12px;
     margin: 10px 0;
@@ -308,6 +326,9 @@ async function handleMediaUpload(fileInput, fieldId, pathDiv, previewDiv, progre
 
             updateMediaPreview(previewDiv, data.path, mediaType);
             showMediaStatus(fieldId, 'success', '✅ File uploaded successfully!');
+
+            const delBtn = document.querySelector(`#delbtn_${fieldId}`);
+            if (delBtn) delBtn.style.display = 'inline-block';
         } else {
             const data = await response.json();
             pathDiv.textContent = 'Error: ' + (data.detail || 'Upload failed');
@@ -357,6 +378,23 @@ function updateMediaPreview(container, filePath, mediaType) {
         link.textContent = '📄 ' + filePath.split('/').pop();
         container.appendChild(link);
     }
+}
+
+function clearMediaField(fieldId) {
+    const hiddenInput = document.getElementById(fieldId);
+    if (hiddenInput) hiddenInput.value = '';
+
+    const pathDiv = document.querySelector(`#path_${fieldId}`);
+    if (pathDiv) {
+        pathDiv.textContent = 'No file selected';
+        pathDiv.classList.remove('success', 'error');
+    }
+
+    const previewDiv = document.querySelector(`#preview_${fieldId}`);
+    if (previewDiv) previewDiv.innerHTML = '';
+
+    const delBtn = document.querySelector(`#delbtn_${fieldId}`);
+    if (delBtn) delBtn.style.display = 'none';
 }
 
 function showMediaStatus(fieldId, status, message) {

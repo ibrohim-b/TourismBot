@@ -337,14 +337,14 @@ class PointAdmin(ModelView, model=Point):
         },
         "lat": {
             "validators": [
-                validators.DataRequired(),
+                validators.Optional(),
                 validators.NumberRange(min=-90, max=90),
             ],
             "description": "Latitude coordinate (-90 to 90)",
         },
         "lng": {
             "validators": [
-                validators.DataRequired(),
+                validators.Optional(),
                 validators.NumberRange(min=-180, max=180),
             ],
             "description": "Longitude coordinate (-180 to 180)",
@@ -355,7 +355,7 @@ class PointAdmin(ModelView, model=Point):
         },
         "image": {
             "validators": [validators.Optional(), validators.Length(max=255)],
-            "description": "Image - upload or paste path",
+            "description": "Image - upload or paste path (optional)",
         },
         "video": {
             "validators": [validators.Optional(), validators.Length(max=255)],

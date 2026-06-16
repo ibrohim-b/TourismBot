@@ -53,8 +53,8 @@ class PointCreate(BaseModel):
     order: int = Field(..., ge=1, le=100)
     title: str = Field(..., min_length=3, max_length=200)
     text: str = Field(..., min_length=10, max_length=2000)
-    lat: float = Field(..., ge=-90, le=90)
-    lng: float = Field(..., ge=-180, le=180)
+    lat: Optional[float] = Field(None, ge=-90, le=90)
+    lng: Optional[float] = Field(None, ge=-180, le=180)
     audio: Optional[str] = Field(None, max_length=255)
     image: Optional[str] = Field(None, max_length=255)
 
@@ -74,8 +74,8 @@ class PointResponse(BaseModel):
     order: int
     title: str
     text: str
-    lat: float
-    lng: float
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     audio: Optional[str] = None
     image: Optional[str] = None
     
