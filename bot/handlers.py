@@ -1,3 +1,4 @@
+from pathlib import Path
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardButton
 from aiogram.filters import Command
@@ -14,6 +15,8 @@ from utils.logger import setup_logger
 
 logger = setup_logger('bot_handlers')
 router = Router()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 @router.message(Command("start"))
@@ -89,7 +92,7 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
         city = await session.execute(select(City).where(City.id == city_id))
         city = city.scalars().first()
         if city.image:
-            await call.message.answer_photo(FSInputFile(city.image))
+            await call.message.answer_photo(FSInputFile(BASE_DIR / city.image))
     
     await call.message.answer(f"✅ Выбрано: *{city.name}*", parse_mode="Markdown")
 
@@ -113,6 +116,14 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
         points = result.scalars().all()
         
     await call.message.answer(f"✅ Выбрано: *{exc.title}*", parse_mode="Markdown")
+
+    media_group = MediaGroupBuilder()
+    if exc.image:
+        media_group.add_photo(media=FSInputFile(BASE_DIR / exc.image))
+    if exc.video:
+        media_group.add_video(media=FSInputFile(BASE_DIR / exc.video))
+    if exc.image or exc.video:
+        await call.message.answer_media_group(media_group.build())
 
     await call.message.answer(
         f"*{exc.title}*\n\n{exc.description}\n\n📍 Точек: {len(points)}",
@@ -168,14 +179,14 @@ async def at_place(call: CallbackQuery, state: FSMContext):
     media_group = MediaGroupBuilder()
     
     if point.image:
-        media_group.add_photo(media=FSInputFile(point.image))
+        media_group.add_photo(media=FSInputFile(BASE_DIR / point.image))
     if point.video:
-        media_group.add_video(media=FSInputFile(point.video))
+        media_group.add_video(media=FSInputFile(BASE_DIR / point.video))
     if point.image or point.video:
         await call.message.answer_media_group(media_group.build())
-    
+
     if point.audio:
-        await call.message.answer_audio(FSInputFile(point.audio))
+        await call.message.answer_audio(FSInputFile(BASE_DIR / point.audio))
         
     await call.message.answer(point.text, reply_markup=next_kb())
 
