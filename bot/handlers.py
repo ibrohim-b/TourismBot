@@ -19,6 +19,14 @@ router = Router()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def media_file(path: str):
+    full = BASE_DIR / path
+    if full.exists():
+        return FSInputFile(full)
+    logger.warning(f"Media file not found: {full}")
+    return None
+
+
 @router.message(Command("start"))
 async def start(msg: Message):
     logger.info(f"User {msg.from_user.id} started bot")
@@ -92,7 +100,9 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
         city = await session.execute(select(City).where(City.id == city_id))
         city = city.scalars().first()
         if city.image:
-            await call.message.answer_photo(FSInputFile(BASE_DIR / city.image))
+            f = media_file(city.image)
+            if f:
+                await call.message.answer_photo(f)
     
     await call.message.answer(f"✅ Выбрано: *{city.name}*", parse_mode="Markdown")
 
@@ -118,12 +128,13 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
     await call.message.answer(f"✅ Выбрано: *{exc.title}*", parse_mode="Markdown")
 
     media_group = MediaGroupBuilder()
-    if exc.image:
-        media_group.add_photo(media=FSInputFile(BASE_DIR / exc.image))
-    if exc.video:
-        media_group.add_video(media=FSInputFile(BASE_DIR / exc.video))
-    if exc.image or exc.video:
-        await call.message.answer_media_group(media_group.build())
+    if exc.image and (f := media_file(exc.image)):
+        media_group.add_photo(media=f)
+    if exc.video and (f := media_file(exc.video)):
+        media_group.add_video(media=f)
+    built = media_group.build()
+    if built:
+        await call.message.answer_media_group(built)
 
     await call.message.answer(
         f"*{exc.title}*\n\n{exc.description}\n\n📍 Точек: {len(points)}",
@@ -177,16 +188,16 @@ async def at_place(call: CallbackQuery, state: FSMContext):
     point = points[idx]
 
     media_group = MediaGroupBuilder()
-    
-    if point.image:
-        media_group.add_photo(media=FSInputFile(BASE_DIR / point.image))
-    if point.video:
-        media_group.add_video(media=FSInputFile(BASE_DIR / point.video))
-    if point.image or point.video:
-        await call.message.answer_media_group(media_group.build())
+    if point.image and (f := media_file(point.image)):
+        media_group.add_photo(media=f)
+    if point.video and (f := media_file(point.video)):
+        media_group.add_video(media=f)
+    built = media_group.build()
+    if built:
+        await call.message.answer_media_group(built)
 
-    if point.audio:
-        await call.message.answer_audio(FSInputFile(BASE_DIR / point.audio))
+    if point.audio and (f := media_file(point.audio)):
+        await call.message.answer_audio(f)
         
     await call.message.answer(point.text, reply_markup=next_kb())
 
