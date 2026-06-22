@@ -22,17 +22,24 @@ logger = setup_logger('bot_main')
 
 async def main():
     logger.info("Starting bot...")
-    # Create all tables
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables ready")
 
-    bot = Bot(BOT_TOKEN)
-    dp = Dispatcher()
-    dp.include_router(router)
+        bot = Bot(BOT_TOKEN)
+        dp = Dispatcher()
+        dp.include_router(router)
 
-    logger.info("Bot started polling")
-    await dp.start_polling(bot)
+        logger.info("Bot started polling")
+        await dp.start_polling(bot)
+    except Exception:
+        logger.critical("Bot crashed", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")

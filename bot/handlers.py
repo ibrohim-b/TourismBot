@@ -19,12 +19,19 @@ router = Router()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+PHOTO_SIZE_LIMIT = 10 * 1024 * 1024  # 10MB
+
+
 def media_file(path: str):
     full = BASE_DIR / path
     if full.exists():
         return FSInputFile(full)
     logger.warning(f"Media file not found: {full}")
     return None
+
+
+def is_large(path: str) -> bool:
+    return (BASE_DIR / path).stat().st_size > PHOTO_SIZE_LIMIT
 
 
 @router.message(Command("start"))
@@ -81,9 +88,8 @@ async def get_trips(msg: Message, state: FSMContext):
         await msg.answer("🌍 Выберите город:", reply_markup=kb)
         await state.set_state(TripState.city)
     except Exception as e:
-        logger.error(f"Error in get_trips: {str(e)}")
+        logger.error("Error in get_trips", exc_info=True)
         await msg.answer(f"Ошибка: {str(e)}")
-        # raise e
 
 
 @router.callback_query(F.data.startswith("city:"))
@@ -93,23 +99,29 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await call.message.edit_reply_markup(reply_markup=None)
     await state.update_data(city_id=city_id)
-    
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Excursion).where(Excursion.city_id == city_id).where(Excursion.points.any()))
-        excursions = result.scalars().all()
-        city = await session.execute(select(City).where(City.id == city_id))
-        city = city.scalars().first()
-        if city.image:
-            f = media_file(city.image)
-            if f:
-                await call.message.answer_photo(f)
-    
-    await call.message.answer(f"✅ Выбрано: *{city.name}*", parse_mode="Markdown")
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(Excursion).where(Excursion.city_id == city_id).where(Excursion.points.any()))
+            excursions = result.scalars().all()
+            city = await session.execute(select(City).where(City.id == city_id))
+            city = city.scalars().first()
+            if city.image:
+                f = media_file(city.image)
+                if f:
+                    if is_large(city.image):
+                        await call.message.answer_document(f)
+                    else:
+                        await call.message.answer_photo(f)
 
-    kb = simple_kb(
-        [[InlineKeyboardButton(text=e.title, callback_data=f"exc:{e.id}")]for e in excursions]
-    )
-    await call.message.answer("🎒 Выберите экскурсию:", reply_markup=kb)
+        await call.message.answer(f"✅ Выбрано: *{city.name}*", parse_mode="Markdown")
+
+        kb = simple_kb(
+            [[InlineKeyboardButton(text=e.title, callback_data=f"exc:{e.id}")] for e in excursions]
+        )
+        await call.message.answer("🎒 Выберите экскурсию:", reply_markup=kb)
+    except Exception as e:
+        logger.error(f"Error in choose_city for city_id={city_id}", exc_info=True)
+        await call.message.answer(f"Ошибка: {str(e)}")
 
 
 @router.callback_query(F.data.startswith("exc:"))
@@ -119,28 +131,32 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await call.message.edit_reply_markup(reply_markup=None)
     await state.update_data(excursion_id=exc_id, point_index=0)
+    try:
+        async with AsyncSessionLocal() as session:
+            exc = await session.get(Excursion, exc_id)
+            result = await session.execute(select(Point).where(Point.excursion_id == exc_id))
+            points = result.scalars().all()
 
-    async with AsyncSessionLocal() as session:
-        exc = await session.get(Excursion, exc_id)
-        result = await session.execute(select(Point).where(Point.excursion_id == exc_id))
-        points = result.scalars().all()
-        
-    await call.message.answer(f"✅ Выбрано: *{exc.title}*", parse_mode="Markdown")
+        await call.message.answer(f"✅ Выбрано: *{exc.title}*", parse_mode="Markdown")
 
-    media_group = MediaGroupBuilder()
-    if exc.image and (f := media_file(exc.image)):
-        media_group.add_photo(media=f)
-    if exc.video and (f := media_file(exc.video)):
-        media_group.add_video(media=f)
-    built = media_group.build()
-    if built:
-        await call.message.answer_media_group(built)
+        for img_path in [exc.image] if exc.image else []:
+            f = media_file(img_path)
+            if f:
+                if is_large(img_path):
+                    await call.message.answer_document(f)
+                else:
+                    await call.message.answer_photo(f)
+        if exc.video and (f := media_file(exc.video)):
+            await call.message.answer_video(f)
 
-    await call.message.answer(
-        f"*{exc.title}*\n\n{exc.description}\n\n📍 Точек: {len(points)}",
-        reply_markup=start_excursion_kb(),
-        parse_mode="Markdown",
-    )
+        await call.message.answer(
+            f"*{exc.title}*\n\n{exc.description}\n\n📍 Точек: {len(points)}",
+            reply_markup=start_excursion_kb(),
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        logger.error(f"Error in excursion_info for exc_id={exc_id}", exc_info=True)
+        await call.message.answer(f"Ошибка: {str(e)}")
 
 
 @router.callback_query(F.data == "start_trip")
@@ -149,10 +165,15 @@ async def start_trip(call: CallbackQuery, state: FSMContext):
     logger.info(f"User {call.from_user.id} started excursion {data['excursion_id']}")
     await call.answer()
     await call.message.edit_reply_markup(reply_markup=None)
-    await send_point(call, data["excursion_id"], 0)
+    try:
+        await send_point(call, data["excursion_id"], 0)
+    except Exception as e:
+        logger.error(f"Error in start_trip for excursion_id={data['excursion_id']}", exc_info=True)
+        await call.message.answer(f"Ошибка: {str(e)}")
 
 
 async def send_point(call, exc_id, index):
+    logger.debug(f"send_point exc_id={exc_id} index={index}")
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Point)
@@ -160,7 +181,13 @@ async def send_point(call, exc_id, index):
             .order_by(Point.order)
         )
         points = result.scalars().all()
-        point = points[index]
+
+    if index >= len(points):
+        logger.warning(f"send_point: index {index} out of range (total={len(points)}) for exc_id={exc_id}")
+        raise IndexError(f"Point index {index} out of range")
+
+    point = points[index]
+    logger.debug(f"Sending point '{point.title}' (id={point.id})")
 
     if point.lat and point.lng:
         await call.message.answer_location(point.lat, point.lng)
@@ -175,50 +202,58 @@ async def send_point(call, exc_id, index):
 async def at_place(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     idx = data["point_index"]
+    logger.info(f"User {call.from_user.id} arrived at point index={idx} excursion={data['excursion_id']}")
     await call.answer()
     await call.message.edit_reply_markup(reply_markup=None)
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Point)
-            .where(Point.excursion_id == data["excursion_id"])
-            .order_by(Point.order)
-        )
-        points = result.scalars().all()
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Point)
+                .where(Point.excursion_id == data["excursion_id"])
+                .order_by(Point.order)
+            )
+            points = result.scalars().all()
 
-    point = points[idx]
+        point = points[idx]
+        logger.debug(f"Delivering content for point '{point.title}' (id={point.id})")
 
-    media_group = MediaGroupBuilder()
-    if point.image and (f := media_file(point.image)):
-        media_group.add_photo(media=f)
-    if point.video and (f := media_file(point.video)):
-        media_group.add_video(media=f)
-    built = media_group.build()
-    if built:
-        await call.message.answer_media_group(built)
+        if point.image and (f := media_file(point.image)):
+            if is_large(point.image):
+                await call.message.answer_document(f)
+            else:
+                await call.message.answer_photo(f)
+        if point.video and (f := media_file(point.video)):
+            await call.message.answer_video(f)
+        if point.audio and (f := media_file(point.audio)):
+            await call.message.answer_audio(f)
 
-    if point.audio and (f := media_file(point.audio)):
-        await call.message.answer_audio(f)
-        
-    await call.message.answer(point.text, reply_markup=next_kb())
+        await call.message.answer(point.text, reply_markup=next_kb())
+    except Exception as e:
+        logger.error(f"Error in at_place idx={idx}", exc_info=True)
+        await call.message.answer(f"Ошибка: {str(e)}")
 
 @router.callback_query(F.data == "next")
 async def next_point(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     idx = data["point_index"] + 1
+    logger.info(f"User {call.from_user.id} advancing to point index={idx} excursion={data['excursion_id']}")
     await call.answer()
     await call.message.edit_reply_markup(reply_markup=None)
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Point).where(Point.excursion_id == data["excursion_id"])
+            )
+            points = result.scalars().all()
 
+        if idx >= len(points):
+            logger.info(f"Excursion {data['excursion_id']} completed by user {call.from_user.id}")
+            await call.message.answer("🎉 Экскурсия завершена!", reply_markup=home_kb())
+            await state.clear()
+            return
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Point).where(Point.excursion_id == data["excursion_id"])
-        )
-        points = result.scalars().all()
-
-    if idx >= len(points):
-        await call.message.answer("🎉 Экскурсия завершена!", reply_markup=home_kb())
-        await state.clear()
-        return
-
-    await state.update_data(point_index=idx)
-    await send_point(call, data["excursion_id"], idx)
+        await state.update_data(point_index=idx)
+        await send_point(call, data["excursion_id"], idx)
+    except Exception as e:
+        logger.error(f"Error in next_point idx={idx}", exc_info=True)
+        await call.message.answer(f"Ошибка: {str(e)}")
