@@ -41,7 +41,7 @@ class CityAdmin(ModelView, model=City):
         ),
         City.image: lambda m, a: (
             Markup(
-                f'<a href="\{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
+                f'<a href="/{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
             )
             if m.image
             else "-"
@@ -143,14 +143,14 @@ class ExcursionAdmin(ModelView, model=Excursion):
         ),
          Excursion.image: lambda m, a: (
             Markup(
-                f'<a href="\{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
+                f'<a href="/{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
             )
             if m.image
             else "-"
         ),
         Excursion.video: lambda m, a: (
             Markup(
-                f'<a href="\{m.video}" target="_blank" class="btn btn-sm btn-danger">🎬 Watch</a>'
+                f'<a href="/{m.video}" target="_blank" class="btn btn-sm btn-danger">🎬 Watch</a>'
             )
             if m.video
             else "-"
@@ -288,21 +288,21 @@ class PointAdmin(ModelView, model=Point):
         Point.text: lambda m, a: (m.text[:50] + "...") if len(m.text) > 50 else m.text,
         Point.image: lambda m, a: (
             Markup(
-                f'<a href="\{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
+                f'<a href="/{m.image}" target="_blank" class="btn btn-sm btn-primary">📷 View</a>'
             )
             if m.image
             else "-"
         ),
         Point.audio: lambda m, a: (
             Markup(
-                f'<a href="\{m.audio}" target="_blank" class="btn btn-sm btn-success">🎧 Play</a>'
+                f'<a href="/{m.audio}" target="_blank" class="btn btn-sm btn-success">🎧 Play</a>'
             )
             if m.audio
             else "-"
         ),
         Point.video: lambda m, a: (
             Markup(
-                f'<a href="\{m.video}" target="_blank" class="btn btn-sm btn-danger">🎬 Watch</a>'
+                f'<a href="/{m.video}" target="_blank" class="btn btn-sm btn-danger">🎬 Watch</a>'
             )
             if m.video
             else "-"
