@@ -13,12 +13,21 @@ from wtforms.fields import SelectField
 from sqlalchemy.orm import selectinload
 from db.models import City, Excursion, Point
 from web.media_admin import MediaField, MediaWidget, MEDIA_CSS, MEDIA_JS
+from web.media import delete_media_file
 from markupsafe import Markup
 from starlette.requests import Request
 from utils.logger import setup_logger
 from markupsafe import Markup
 
 logger = setup_logger("web_admin")
+
+
+async def _cleanup_media(*paths):
+    for path in paths:
+        if path:
+            err = await delete_media_file(path)
+            if err:
+                logger.warning(f"Could not delete media: {err}")
 
 class CityAdmin(ModelView, model=City):
     column_list = [City.id, City.name, City.image, City.excursions]
@@ -99,7 +108,19 @@ class CityAdmin(ModelView, model=City):
 
     async def update_model(self, request: Request, pk, data: dict):
         logger.info(f"[CityAdmin] Updating city {pk}: {data}")
-        return await super().update_model(request, pk=pk, data=data)
+        obj = await self.get_object_for_edit(pk)
+        old_image = obj.image if obj else None
+        result = await super().update_model(request, pk=pk, data=data)
+        if old_image and old_image != data.get("image"):
+            await _cleanup_media(old_image)
+        return result
+
+    async def delete_model(self, request: Request, pk):
+        obj = await self.get_object_for_edit(pk)
+        paths = [obj.image] if obj else []
+        result = await super().delete_model(request, pk)
+        await _cleanup_media(*paths)
+        return result
 
 class ExcursionAdmin(ModelView, model=Excursion):
     column_list = [
@@ -226,7 +247,22 @@ class ExcursionAdmin(ModelView, model=Excursion):
 
     async def update_model(self, request: Request, pk, data: dict):
         logger.info(f"[ExcursionAdmin] Updating excursion {pk}: {data}")
-        return await super().update_model(request, pk=pk, data=data)
+        obj = await self.get_object_for_edit(pk)
+        old_image = obj.image if obj else None
+        old_video = obj.video if obj else None
+        result = await super().update_model(request, pk=pk, data=data)
+        if old_image and old_image != data.get("image"):
+            await _cleanup_media(old_image)
+        if old_video and old_video != data.get("video"):
+            await _cleanup_media(old_video)
+        return result
+
+    async def delete_model(self, request: Request, pk):
+        obj = await self.get_object_for_edit(pk)
+        paths = [obj.image, obj.video] if obj else []
+        result = await super().delete_model(request, pk)
+        await _cleanup_media(*paths)
+        return result
 
 class PointAdmin(ModelView, model=Point):
     column_list = [
@@ -402,4 +438,22 @@ class PointAdmin(ModelView, model=Point):
 
     async def update_model(self, request: Request, pk, data: dict):
         logger.info(f"[PointAdmin] Updating point {pk}: {data}")
-        return await super().update_model(request, pk=pk, data=data)
+        obj = await self.get_object_for_edit(pk)
+        old_image = obj.image if obj else None
+        old_audio = obj.audio if obj else None
+        old_video = obj.video if obj else None
+        result = await super().update_model(request, pk=pk, data=data)
+        if old_image and old_image != data.get("image"):
+            await _cleanup_media(old_image)
+        if old_audio and old_audio != data.get("audio"):
+            await _cleanup_media(old_audio)
+        if old_video and old_video != data.get("video"):
+            await _cleanup_media(old_video)
+        return result
+
+    async def delete_model(self, request: Request, pk):
+        obj = await self.get_object_for_edit(pk)
+        paths = [obj.image, obj.audio, obj.video] if obj else []
+        result = await super().delete_model(request, pk)
+        await _cleanup_media(*paths)
+        return result
