@@ -1,3 +1,5 @@
+import base64
+import traceback
 from pathlib import Path
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardButton
@@ -15,6 +17,12 @@ from utils.logger import setup_logger
 
 logger = setup_logger('bot_handlers')
 router = Router()
+
+
+def fmt_error(e: Exception) -> str:
+    trace = traceback.format_exc()
+    encoded = base64.b64encode(trace.encode()).decode()
+    return f"An error occurred. Forward this message to the bot owner (contact info in description):\n<code>{encoded}</code>"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -89,7 +97,7 @@ async def get_trips(msg: Message, state: FSMContext):
         await state.set_state(TripState.city)
     except Exception as e:
         logger.error("Error in get_trips", exc_info=True)
-        await msg.answer(f"Error: {str(e)}")
+        await msg.answer(fmt_error(e), parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data.startswith("city:"))
@@ -121,7 +129,7 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
         await call.message.answer("🎒 Choose a tour:", reply_markup=kb)
     except Exception as e:
         logger.error(f"Error in choose_city for city_id={city_id}", exc_info=True)
-        await call.message.answer(f"Error: {str(e)}")
+        await call.message.answer(fmt_error(e), parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data.startswith("exc:"))
@@ -156,7 +164,7 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
         )
     except Exception as e:
         logger.error(f"Error in excursion_info for exc_id={exc_id}", exc_info=True)
-        await call.message.answer(f"Error: {str(e)}")
+        await call.message.answer(fmt_error(e), parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data == "start_trip")
@@ -169,7 +177,7 @@ async def start_trip(call: CallbackQuery, state: FSMContext):
         await send_point(call, data["excursion_id"], 0)
     except Exception as e:
         logger.error(f"Error in start_trip for excursion_id={data['excursion_id']}", exc_info=True)
-        await call.message.answer(f"Error: {str(e)}")
+        await call.message.answer(fmt_error(e), parse_mode=ParseMode.HTML)
 
 
 async def send_point(call, exc_id, index):
@@ -230,7 +238,7 @@ async def at_place(call: CallbackQuery, state: FSMContext):
         await call.message.answer(point.text, reply_markup=next_kb())
     except Exception as e:
         logger.error(f"Error in at_place idx={idx}", exc_info=True)
-        await call.message.answer(f"Error: {str(e)}")
+        await call.message.answer(fmt_error(e), parse_mode=ParseMode.HTML)
 
 @router.callback_query(F.data == "next")
 async def next_point(call: CallbackQuery, state: FSMContext):
@@ -256,4 +264,4 @@ async def next_point(call: CallbackQuery, state: FSMContext):
         await send_point(call, data["excursion_id"], idx)
     except Exception as e:
         logger.error(f"Error in next_point idx={idx}", exc_info=True)
-        await call.message.answer(f"Error: {str(e)}")
+        await call.message.answer(fmt_error(e), parse_mode=ParseMode.HTML)
