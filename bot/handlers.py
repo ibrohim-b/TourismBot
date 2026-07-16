@@ -38,11 +38,11 @@ def is_large(path: str) -> bool:
 async def start(msg: Message):
     logger.info(f"User {msg.from_user.id} started bot")
     await msg.answer(
-        "👋 Привет! Это телеграм бот: <b>ГИД В КАРМАНЕ</b>\n\n"
-        "🎧 Аудиогид по локациям\n"
-        "🗺 Маршрут на карте\n\n"
-        "Меню → /instruction\n"
-        "Выбрать экскурсию → /get_trips",
+        "👋 Hello! This is a Telegram bot: <b>GUIDE IN YOUR POCKET</b>\n\n"
+        "🎧 Audio guide for locations\n"
+        "🗺 Route on the map\n\n"
+        "Menu → /instruction\n"
+        "Choose a tour → /get_trips",
         parse_mode=ParseMode.HTML,
     )
 
@@ -52,18 +52,18 @@ async def go_home(call: CallbackQuery, state: FSMContext):
     await call.message.edit_reply_markup(reply_markup=None)
     await state.clear()
     await call.message.answer(
-        "👋 Привет! Это телеграм бот: <b>ГИД В КАРМАНЕ</b>\n\n"
-        "🎧 Аудиогид по локациям\n"
-        "🗺 Маршрут на карте\n\n"
-        "Меню → /instruction\n"
-        "Выбрать экскурсию → /get_trips",
+        "👋 Hello! This is a Telegram bot: <b>GUIDE IN YOUR POCKET</b>\n\n"
+        "🎧 Audio guide for locations\n"
+        "🗺 Route on the map\n\n"
+        "Menu → /instruction\n"
+        "Choose a tour → /get_trips",
         parse_mode=ParseMode.HTML,
     )
 
 @router.message(Command("instruction"))
 async def instruction(msg: Message):
     await msg.answer(
-        "📖 Вы выбираете экскурсию → следуете маршруту → слушаете аудиогид."
+        "📖 You choose a tour → follow the route → listen to the audio guide."
     )
 
 
@@ -78,18 +78,18 @@ async def get_trips(msg: Message, state: FSMContext):
         logger.info(f"Found {len(cities)} cities")
         
         if not cities:
-            await msg.answer("❌ Нет доступных городов. Добавьте города через админ панель.")
+            await msg.answer("❌ No cities available. Add cities via the admin panel.")
             return
         
         kb = simple_kb(
             [[InlineKeyboardButton(text=c.name, callback_data=f"city:{c.id}")] for c in cities]
             
         )
-        await msg.answer("🌍 Выберите город:", reply_markup=kb)
+        await msg.answer("🌍 Select a city:", reply_markup=kb)
         await state.set_state(TripState.city)
     except Exception as e:
         logger.error("Error in get_trips", exc_info=True)
-        await msg.answer(f"Ошибка: {str(e)}")
+        await msg.answer(f"Error: {str(e)}")
 
 
 @router.callback_query(F.data.startswith("city:"))
@@ -113,15 +113,15 @@ async def choose_city(call: CallbackQuery, state: FSMContext):
                     else:
                         await call.message.answer_photo(f)
 
-        await call.message.answer(f"✅ Выбрано: *{city.name}*", parse_mode="Markdown")
+        await call.message.answer(f"✅ Selected: *{city.name}*", parse_mode="Markdown")
 
         kb = simple_kb(
             [[InlineKeyboardButton(text=e.title, callback_data=f"exc:{e.id}")] for e in excursions]
         )
-        await call.message.answer("🎒 Выберите экскурсию:", reply_markup=kb)
+        await call.message.answer("🎒 Choose a tour:", reply_markup=kb)
     except Exception as e:
         logger.error(f"Error in choose_city for city_id={city_id}", exc_info=True)
-        await call.message.answer(f"Ошибка: {str(e)}")
+        await call.message.answer(f"Error: {str(e)}")
 
 
 @router.callback_query(F.data.startswith("exc:"))
@@ -137,7 +137,7 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
             result = await session.execute(select(Point).where(Point.excursion_id == exc_id))
             points = result.scalars().all()
 
-        await call.message.answer(f"✅ Выбрано: *{exc.title}*", parse_mode="Markdown")
+        await call.message.answer(f"✅ Selected: *{exc.title}*", parse_mode="Markdown")
 
         for img_path in [exc.image] if exc.image else []:
             f = media_file(img_path)
@@ -150,13 +150,13 @@ async def excursion_info(call: CallbackQuery, state: FSMContext):
             await call.message.answer_video(f)
 
         await call.message.answer(
-            f"*{exc.title}*\n\n{exc.description}\n\n📍 Точек: {len(points)}",
+            f"*{exc.title}*\n\n{exc.description}\n\n📍 Points: {len(points)}",
             reply_markup=start_excursion_kb(),
             parse_mode="Markdown",
         )
     except Exception as e:
         logger.error(f"Error in excursion_info for exc_id={exc_id}", exc_info=True)
-        await call.message.answer(f"Ошибка: {str(e)}")
+        await call.message.answer(f"Error: {str(e)}")
 
 
 @router.callback_query(F.data == "start_trip")
@@ -169,7 +169,7 @@ async def start_trip(call: CallbackQuery, state: FSMContext):
         await send_point(call, data["excursion_id"], 0)
     except Exception as e:
         logger.error(f"Error in start_trip for excursion_id={data['excursion_id']}", exc_info=True)
-        await call.message.answer(f"Ошибка: {str(e)}")
+        await call.message.answer(f"Error: {str(e)}")
 
 
 async def send_point(call, exc_id, index):
@@ -192,7 +192,7 @@ async def send_point(call, exc_id, index):
     if point.lat and point.lng:
         await call.message.answer_location(point.lat, point.lng)
     await call.message.answer(
-        f"📍 *{point.title}*\n\nНажмите кнопку, когда будете на месте.",
+        f"📍 *{point.title}*\n\nPress the button when you arrive at the location.",
         reply_markup=im_here_kb(),
         parse_mode="Markdown",
     )
@@ -230,7 +230,7 @@ async def at_place(call: CallbackQuery, state: FSMContext):
         await call.message.answer(point.text, reply_markup=next_kb())
     except Exception as e:
         logger.error(f"Error in at_place idx={idx}", exc_info=True)
-        await call.message.answer(f"Ошибка: {str(e)}")
+        await call.message.answer(f"Error: {str(e)}")
 
 @router.callback_query(F.data == "next")
 async def next_point(call: CallbackQuery, state: FSMContext):
@@ -248,7 +248,7 @@ async def next_point(call: CallbackQuery, state: FSMContext):
 
         if idx >= len(points):
             logger.info(f"Excursion {data['excursion_id']} completed by user {call.from_user.id}")
-            await call.message.answer("🎉 Экскурсия завершена!", reply_markup=home_kb())
+            await call.message.answer("🎉 Tour completed!", reply_markup=home_kb())
             await state.clear()
             return
 
@@ -256,4 +256,4 @@ async def next_point(call: CallbackQuery, state: FSMContext):
         await send_point(call, data["excursion_id"], idx)
     except Exception as e:
         logger.error(f"Error in next_point idx={idx}", exc_info=True)
-        await call.message.answer(f"Ошибка: {str(e)}")
+        await call.message.answer(f"Error: {str(e)}")
